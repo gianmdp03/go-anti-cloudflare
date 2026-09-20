@@ -1,0 +1,8 @@
+.git
+.gitignore
+*.md
+*.log
+*.exe
+deploy/
+docs/
+tests/

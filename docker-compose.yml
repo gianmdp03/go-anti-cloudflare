@@ -1,0 +1,70 @@
+services:
+  # ============================================================================
+  # Go TLS-Spoofing Sidecar Proxy Service
+  # ============================================================================
+  mgp-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mgp-proxy
+    restart: unless-stopped
+    environment:
+      - PORT=8080
+      - UPSTREAM_URL=https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php
+      - TIMEOUT_SECONDS=15
+      - ALLOWED_ORIGIN=http://spring-boot:8400
+      - TLS_PROFILE=Chrome_131
+      - LOG_LEVEL=info
+      - AUTH_SERVICE_URL=http://localhost:8191/v1
+    ports:
+      # Expose to host for local debugging or external queries if needed
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "/healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 32M
+        reservations:
+          cpus: "0.05"
+          memory: 12M
+    networks:
+      - transit-net
+
+  # ============================================================================
+  # Reference Spring Boot Backend Service (:8400)
+  # ============================================================================
+  spring-boot:
+    # Example placeholder: swap with your real Spring Boot image / build context
+    image: eclipse-temurin:21-jre-alpine
+    container_name: spring-boot-backend
+    restart: unless-stopped
+    command: ["sh", "-c", "echo 'Spring Boot starting on :8400...' && nc -lk -p 8400"]
+    environment:
+      - SERVER_PORT=8400
+      - MGP_PROXY_URL=http://mgp-proxy:8080/proxy
+    ports:
+      - "8400:8400"
+    depends_on:
+      mgp-proxy:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: 512M
+    networks:
+      - transit-net
+
+# ==============================================================================
+# Isolated Internal Bridge Network
+# ==============================================================================
+networks:
+  transit-net:
+    driver: bridge
+    name: mgp-transit-network

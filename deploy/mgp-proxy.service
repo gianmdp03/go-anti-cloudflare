@@ -1,0 +1,57 @@
+[Unit]
+Description=Go TLS-Spoofing Sidecar Proxy for MGP Transit
+Documentation=https://github.com/gcast/go-anti-cloudflare
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mgpproxy
+Group=mgpproxy
+
+# Working directory and execution binary
+WorkingDirectory=/var/run/mgp-proxy
+ExecStart=/usr/local/bin/mgp-proxy
+
+# Environment Configuration
+Environment="PORT=8080"
+Environment="UPSTREAM_URL=https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php"
+Environment="TIMEOUT_SECONDS=15"
+Environment="ALLOWED_ORIGIN=http://localhost:8400"
+Environment="TLS_PROFILE=Chrome_131"
+Environment="LOG_LEVEL=info"
+Environment="AUTH_SERVICE_URL=http://localhost:8191/v1"
+
+# Restart and Recovery Policies
+Restart=always
+RestartSec=5s
+KillMode=mixed
+TimeoutStopSec=10s
+
+# Resource Constraints (Production Hardening)
+MemoryMax=32M
+MemoryHigh=24M
+CPUQuota=25%
+
+# Sandboxing and Security Isolation
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=
+
+# Standard I/O to systemd journal
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=mgp-proxy
+
+[Install]
+WantedBy=multi-user.target
