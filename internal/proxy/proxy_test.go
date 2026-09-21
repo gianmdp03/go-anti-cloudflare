@@ -55,19 +55,19 @@ func (m *MockTLSEngine) ProfileName() string {
 	if m.ProfileNameVal != "" {
 		return m.ProfileNameVal
 	}
-	return "firefox_120"
+	return "chrome_131"
 }
 
 func (m *MockTLSEngine) UserAgent() string {
 	if m.UserAgentVal != "" {
 		return m.UserAgentVal
 	}
-	return "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0"
+	return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 }
 
 func TestHealthHandler(t *testing.T) {
 	start := time.Now().Add(-10 * time.Second)
-	handler := HealthHandler(start, "firefox_120")
+	handler := HealthHandler(start, "chrome_131")
 
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	rr := httptest.NewRecorder()
@@ -85,8 +85,8 @@ func TestHealthHandler(t *testing.T) {
 	if resp.Status != "UP" {
 		t.Errorf("expected status 'UP', got '%s'", resp.Status)
 	}
-	if resp.TLSProfile != "firefox_120" {
-		t.Errorf("expected profile 'firefox_120', got '%s'", resp.TLSProfile)
+	if resp.TLSProfile != "chrome_131" {
+		t.Errorf("expected profile 'chrome_131', got '%s'", resp.TLSProfile)
 	}
 	if resp.UptimeSeconds < 9.0 {
 		t.Errorf("expected uptime >= 9.0s, got %f", resp.UptimeSeconds)
@@ -110,6 +110,8 @@ func TestHandler_ForwardingAndHeaderSpoofing(t *testing.T) {
 		DoFunc: func(req *fhttp.Request) (*fhttp.Response, error) {
 			respHeader := make(fhttp.Header)
 			respHeader.Set("Content-Type", "application/json; charset=utf-8")
+			respHeader.Set("Content-Encoding", "br")
+			respHeader.Set("Content-Length", "1234")
 			respHeader.Set("X-Custom-Upstream", "response-header-value")
 
 			return &fhttp.Response{
@@ -133,6 +135,17 @@ func TestHandler_ForwardingAndHeaderSpoofing(t *testing.T) {
 	// Verify status code
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected status 200, got %d", rr.Code)
+	}
+
+	// Verify Content-Encoding and Content-Length are stripped
+	if rr.Header().Get("Content-Encoding") != "" {
+		t.Errorf("expected Content-Encoding to be stripped, got '%s'", rr.Header().Get("Content-Encoding"))
+	}
+	if rr.Header().Get("Content-Length") != "" {
+		t.Errorf("expected Content-Length to be stripped, got '%s'", rr.Header().Get("Content-Length"))
+	}
+	if rr.Header().Get("X-Custom-Upstream") != "response-header-value" {
+		t.Errorf("expected X-Custom-Upstream to be preserved, got '%s'", rr.Header().Get("X-Custom-Upstream"))
 	}
 
 	// Verify response body streamed
@@ -188,17 +201,17 @@ func TestHandler_UpstreamErrorPropagation(t *testing.T) {
 }
 
 func TestTLSEngine_Initialization(t *testing.T) {
-	eng, err := NewTLSEngine("firefox_120", 5*time.Second)
+	eng, err := NewTLSEngine("chrome_131", 5*time.Second)
 	if err != nil {
 		t.Fatalf("failed to create TLSEngine: %v", err)
 	}
 	defer eng.CloseIdleConnections()
 
-	if eng.ProfileName() != "firefox_120" {
-		t.Errorf("expected profile 'firefox_120', got '%s'", eng.ProfileName())
+	if eng.ProfileName() != "chrome_131" {
+		t.Errorf("expected profile 'chrome_131', got '%s'", eng.ProfileName())
 	}
-	if !strings.Contains(eng.UserAgent(), "Firefox/120.0") {
-		t.Errorf("expected Firefox 120 User-Agent, got '%s'", eng.UserAgent())
+	if !strings.Contains(eng.UserAgent(), "Chrome/131.0.0.0") {
+		t.Errorf("expected Chrome 131 User-Agent, got '%s'", eng.UserAgent())
 	}
 }
 

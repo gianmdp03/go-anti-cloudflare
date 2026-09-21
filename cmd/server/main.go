@@ -91,8 +91,8 @@ func main() {
 		Addr:              cfg.ListenAddr(),
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       30 * time.Second,
-		WriteTimeout:      30 * time.Second,
+		ReadTimeout:       90 * time.Second,
+		WriteTimeout:      90 * time.Second,
 		IdleTimeout:       120 * time.Second,
 		MaxHeaderBytes:    1 << 20, // 1 MB
 	}

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-const TargetServiceURL = "https://appsl.mardelplata.gob.ar/app_cuando_llega/cuando.php"
+const TargetServiceURL = "https://appsl.mardelplata.gob.ar/app_cuando_llega/"
 
 type ProviderRequest struct {
 	Cmd        string `json:"cmd"`

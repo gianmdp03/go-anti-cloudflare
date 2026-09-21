@@ -11,7 +11,7 @@ services:
     environment:
       - PORT=8080
       - UPSTREAM_URL=https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php
-      - TIMEOUT_SECONDS=15
+      - TIMEOUT_SECONDS=45
       - ALLOWED_ORIGIN=http://spring-boot:8400
       - TLS_PROFILE=Chrome_131
       - LOG_LEVEL=info

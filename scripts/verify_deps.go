@@ -15,7 +15,7 @@ func main() {
 	// Verify tls-client initialization
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(15),
-		tls_client.WithClientProfile(profiles.Firefox_120),
+		tls_client.WithClientProfile(profiles.Chrome_131),
 		tls_client.WithNotFollowRedirects(),
 	}
 
@@ -25,5 +25,5 @@ func main() {
 	}
 	_ = client
 
-	fmt.Println("[OK] tls-client v1.16.0 loaded and initialized successfully with profile Firefox_120.")
+	fmt.Println("[OK] tls-client v1.16.0 loaded and initialized successfully with profile Chrome_131.")
 }

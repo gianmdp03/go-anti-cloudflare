@@ -61,7 +61,7 @@ USER 10001:10001
 # Default environment configuration
 ENV PORT=8080 \
     UPSTREAM_URL=https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php \
-    TIMEOUT_SECONDS=15 \
+    TIMEOUT_SECONDS=45 \
     ALLOWED_ORIGIN=http://localhost:8400 \
     TLS_PROFILE=Chrome_131 \
     LOG_LEVEL=info \

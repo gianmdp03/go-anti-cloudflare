@@ -80,7 +80,7 @@ Cache-Control: no-cache, no-store, must-revalidate
   "uptime_seconds": 342.15,
   "timestamp": "2026-09-19T15:58:10Z",
   "go_version": "go1.27.1",
-  "tls_profile": "firefox_120"
+  "tls_profile": "chrome_131"
 }
 ```
 

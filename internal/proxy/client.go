@@ -124,7 +124,7 @@ type ClientPool struct {
 // NewClientPool initializes a pool of engines across distinct profiles for JA4 rotation.
 func NewClientPool(profilesToUse []string, timeout time.Duration) (*ClientPool, error) {
 	if len(profilesToUse) == 0 {
-		profilesToUse = []string{"firefox_120"}
+		profilesToUse = []string{"chrome_131"}
 	}
 
 	engines := make([]*Engine, 0, len(profilesToUse))

@@ -26,8 +26,8 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.UpstreamURLString() != "https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php" {
 		t.Errorf("expected default upstream URL, got '%s'", cfg.UpstreamURLString())
 	}
-	if cfg.Timeout() != 15*time.Second {
-		t.Errorf("expected default timeout 15s, got %v", cfg.Timeout())
+	if cfg.Timeout() != 45*time.Second {
+		t.Errorf("expected default timeout 45s, got %v", cfg.Timeout())
 	}
 	if cfg.AllowedOrigin() != "http://localhost:8400" {
 		t.Errorf("expected default origin 'http://localhost:8400', got '%s'", cfg.AllowedOrigin())

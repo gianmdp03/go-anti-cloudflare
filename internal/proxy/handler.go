@@ -32,6 +32,8 @@ var bufferPool = sync.Pool{
 // Hop-by-hop headers that must not be forwarded by proxies according to RFC 2616 / RFC 7230.
 var hopByHopHeaders = map[string]struct{}{
 	"connection":          {},
+	"content-encoding":    {},
+	"content-length":      {},
 	"keep-alive":          {},
 	"proxy-authenticate":  {},
 	"proxy-authorization": {},
@@ -190,6 +192,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(key, v)
 		}
 	}
+
+	// Ensure Content-Encoding and Content-Length are never forwarded to client
+	w.Header().Del("Content-Encoding")
+	w.Header().Del("Content-Length")
 
 	// Forward exact status code
 	w.WriteHeader(resp.StatusCode)

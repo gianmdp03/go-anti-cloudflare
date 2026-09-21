@@ -16,7 +16,7 @@ ExecStart=/usr/local/bin/mgp-proxy
 # Environment Configuration
 Environment="PORT=8080"
 Environment="UPSTREAM_URL=https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php"
-Environment="TIMEOUT_SECONDS=15"
+Environment="TIMEOUT_SECONDS=45"
 Environment="ALLOWED_ORIGIN=http://localhost:8400"
 Environment="TLS_PROFILE=Chrome_131"
 Environment="LOG_LEVEL=info"

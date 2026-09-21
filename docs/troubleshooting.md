@@ -20,7 +20,7 @@ Con variables de entorno personalizadas:
 ```bash
 PORT=8080 \
 ALLOWED_ORIGIN=http://localhost:8400 \
-TLS_PROFILE=Firefox_120 \
+TLS_PROFILE=Chrome_131 \
 LOG_LEVEL=debug \
 go run cmd/server/main.go
 ```
@@ -29,7 +29,7 @@ En Windows (PowerShell):
 ```powershell
 $env:PORT="8080"
 $env:ALLOWED_ORIGIN="http://localhost:8400"
-$env:TLS_PROFILE="Firefox_120"
+$env:TLS_PROFILE="Chrome_131"
 go run cmd/server/main.go
 ```
 
@@ -101,9 +101,9 @@ sudo journalctl -u mgp-proxy -f -o json-pretty
 |---|---|---|---|
 | `PORT` | int | `8080` | Puerto TCP de escucha del servidor HTTP. |
 | `UPSTREAM_URL` | string | `https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php` | URL del endpoint de transporte de General Pueyrredon. |
-| `TIMEOUT_SECONDS` | int | `15` | Timeout máximo para peticiones salientes al upstream. |
+| `TIMEOUT_SECONDS` | int | `45` | Timeout máximo para peticiones salientes al upstream. |
 | `ALLOWED_ORIGIN` | string | `http://localhost:8400` | Origen CORS autorizado (backend Spring Boot). |
-| `TLS_PROFILE` | string | `Firefox_120` | Perfil de fingerprint TLS (`Firefox_120`, `Firefox_133`, `Chrome_120`, `Chrome_131`). |
+| `TLS_PROFILE` | string | `Chrome_131` | Perfil de fingerprint TLS (`Firefox_120`, `Firefox_133`, `Chrome_120`, `Chrome_131`). |
 | `LOG_LEVEL` | string | `info` | Nivel de logging estructurado (`debug`, `info`, `warn`, `error`). |
 | `PROXY_URL` | string | `""` | (Opcional) Proxy residencial saliente (`http://user:pass@host:port` o `socks5://host:port`). |
 | `DEFAULT_COOKIE` | string | `""` | (Opcional) Cookie por defecto a inyectar (ej. `cf_clearance=...`). |

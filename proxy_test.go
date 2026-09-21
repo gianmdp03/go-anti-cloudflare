@@ -61,7 +61,7 @@ func TestMockIntegration_EndToEndProxyServer(t *testing.T) {
 		"UPSTREAM_URL":    mockUpstream.URL,
 		"TIMEOUT_SECONDS": "15",
 		"ALLOWED_ORIGIN":  "http://localhost:8400",
-		"TLS_PROFILE":     "Firefox_120",
+		"TLS_PROFILE":     "Chrome_131",
 		"LOG_LEVEL":       "info",
 	}
 	cfg, err := config.LoadFromLookup(func(k string) (string, bool) {
@@ -159,7 +159,7 @@ func TestIntegration_LiveUpstreamDirect(t *testing.T) {
 		t.Skip("skipping live test in short mode")
 	}
 
-	engine, err := proxy.NewTLSEngine("firefox_120", 15*time.Second)
+	engine, err := proxy.NewTLSEngine("chrome_131", 15*time.Second)
 	if err != nil {
 		t.Fatalf("failed to initialize TLS Engine: %v", err)
 	}
