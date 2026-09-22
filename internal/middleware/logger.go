@@ -12,8 +12,8 @@ import (
 type contextKey string
 
 const (
-	RequestIDHeader             = "X-Request-ID"
-	requestIDKey     contextKey = "requestID"
+	RequestIDHeader            = "X-Request-ID"
+	requestIDKey    contextKey = "requestID"
 )
 
 // responseRecorder wraps http.ResponseWriter to capture HTTP status code and bytes written.
@@ -92,7 +92,7 @@ func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
 			duration := time.Since(startTime)
 			durationMs := float64(duration.Microseconds()) / 1000.0
 
-			// Emit structured log entry
+			// Compact request summary; upstream outcome is logged by the proxy handler.
 			level := slog.LevelInfo
 			if rec.statusCode >= 500 {
 				level = slog.LevelError
@@ -100,7 +100,7 @@ func Logger(logger *slog.Logger) func(http.Handler) http.Handler {
 				level = slog.LevelWarn
 			}
 
-			logger.Log(ctx, level, "HTTP request handled",
+			logger.Log(ctx, level, "consulta local finalizada",
 				slog.String("request_id", reqID),
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),

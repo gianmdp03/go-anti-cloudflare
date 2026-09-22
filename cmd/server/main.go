@@ -29,7 +29,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	// 2. Configure structured JSON logging
+	// 2. Configure human-readable operational logging for local runs and Docker logs.
 	var programLevel slog.Level
 	switch cfg.LogLevel() {
 	case "debug":
@@ -45,13 +45,13 @@ func main() {
 	opts := &slog.HandlerOptions{
 		Level: programLevel,
 	}
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, opts)).With(
+	logger := slog.New(slog.NewTextHandler(os.Stdout, opts)).With(
 		slog.String("service", "mgp-proxy-sidecar"),
 		slog.String("version", version),
 	)
 	slog.SetDefault(logger)
 
-	logger.Info("starting TLS-spoofing sidecar proxy",
+	logger.Info("iniciando proxy MGP",
 		slog.Int("port", cfg.Port()),
 		slog.String("listen_addr", cfg.ListenAddr()),
 		slog.String("upstream_url", cfg.UpstreamURLString()),
@@ -64,7 +64,7 @@ func main() {
 	// 3. Initialize TLS spoofing engine
 	engine, err := proxy.NewTLSEngine(cfg.TLSProfile(), cfg.Timeout(), cfg.ProxyURL())
 	if err != nil {
-		logger.Error("failed to initialize TLS engine", "error", err)
+		logger.Error("no se pudo iniciar el motor TLS", "error", err)
 		os.Exit(1)
 	}
 	defer engine.CloseIdleConnections()
@@ -100,7 +100,7 @@ func main() {
 	// 7. Launch server listener in background goroutine
 	serverErrors := make(chan error, 1)
 	go func() {
-		logger.Info("server listening", slog.String("addr", cfg.ListenAddr()))
+		logger.Info("proxy listo para recibir consultas", slog.String("addr", cfg.ListenAddr()))
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErrors <- err
 		}
@@ -112,21 +112,21 @@ func main() {
 
 	select {
 	case err := <-serverErrors:
-		logger.Error("server startup error", "error", err)
+		logger.Error("el servidor no pudo iniciarse", "error", err)
 		os.Exit(1)
 	case sig := <-shutdownSig:
-		logger.Info("shutdown signal received, initiating graceful shutdown", "signal", sig.String())
+		logger.Info("señal de apagado recibida", "signal", sig.String())
 
 		// Drain active in-flight requests with 5-second context timeout
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
 		if err := server.Shutdown(ctx); err != nil {
-			logger.Error("graceful server shutdown failed, forcing close", "error", err)
+			logger.Error("falló el apagado ordenado; se fuerza el cierre", "error", err)
 			_ = server.Close()
 		}
 
 		engine.CloseIdleConnections()
-		logger.Info("proxy server successfully stopped, connections drained")
+		logger.Info("proxy detenido; conexiones finalizadas")
 	}
 }

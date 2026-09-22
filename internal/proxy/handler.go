@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -154,12 +155,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Dynamic session synchronization fallback on HTTP 403 Forbidden
 	if resp != nil && resp.StatusCode == http.StatusForbidden && h.sessionMgr != nil {
-		h.logger.Warn("upstream returned HTTP 403 Forbidden, triggering session refresh via auth provider")
+		h.logger.Warn("MGP rechazó la consulta (HTTP 403); renovando sesión y reintentando una vez",
+			"accion", requestAction(bodyBytes))
 		newCreds, refreshErr := h.sessionMgr.Refresh(r.Context())
 		if refreshErr != nil {
-			h.logger.Error("session refresh failed", "error", refreshErr)
+			h.logger.Error("no se pudo renovar la sesión", "error", refreshErr)
 		} else {
-			h.logger.Info("session refreshed successfully, retrying upstream request")
+			h.logger.Info("sesión renovada; reintentando consulta a MGP", "accion", requestAction(bodyBytes))
 			_ = resp.Body.Close()
 
 			fReq.Header.Set("Cookie", newCreds.Cookie)
@@ -169,7 +171,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			// Re-execute once
 			resp, err = h.tlsEngine.Do(fReq)
 			if err != nil {
-				h.logger.Error("upstream retry failed after session refresh", "error", err)
+				h.logger.Error("falló el reintento luego de renovar la sesión", "error", err)
 				http.Error(w, `{"error":"Bad Gateway - retry after session refresh failed"}`, http.StatusBadGateway)
 				return
 			}
@@ -181,6 +183,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			_ = resp.Body.Close()
 		}
 	}()
+
+	h.logUpstreamOutcome(bodyBytes, resp, time.Since(startTime))
 
 	// 7. Copy safe response headers from upstream to client
 	for key, values := range resp.Header {
@@ -204,6 +208,43 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if _, err := io.Copy(w, resp.Body); err != nil {
 		h.logger.Error("error streaming upstream response body to client", "error", err)
 	}
+}
+
+func (h *Handler) logUpstreamOutcome(body []byte, resp *fhttp.Response, duration time.Duration) {
+	action := requestAction(body)
+	attributes := []any{
+		"accion", action,
+		"status", resp.StatusCode,
+		"duracion_ms", duration.Milliseconds(),
+	}
+
+	switch {
+	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
+		h.logger.Info("MGP respondió correctamente", attributes...)
+	case resp.StatusCode == http.StatusTooManyRequests:
+		h.logger.Warn("MGP aplicó un límite de solicitudes (HTTP 429); esperá antes de reintentar", attributes...)
+	case resp.StatusCode == http.StatusForbidden && isCloudflareResponse(resp):
+		h.logger.Warn("Cloudflare rechazó la consulta; la IP o sesión requiere validación", attributes...)
+	case resp.StatusCode == http.StatusForbidden:
+		h.logger.Warn("MGP rechazó la consulta con HTTP 403", attributes...)
+	case resp.StatusCode >= http.StatusInternalServerError:
+		h.logger.Error("MGP devolvió un error de servidor", attributes...)
+	default:
+		h.logger.Warn("MGP devolvió una respuesta no esperada", attributes...)
+	}
+}
+
+func requestAction(body []byte) string {
+	values, err := url.ParseQuery(string(body))
+	if err != nil || values.Get("accion") == "" {
+		return "(sin accion)"
+	}
+	return values.Get("accion")
+}
+
+func isCloudflareResponse(resp *fhttp.Response) bool {
+	server := strings.ToLower(resp.Header.Get("Server"))
+	return strings.Contains(server, "cloudflare") || resp.Header.Get("Cf-Mitigated") != ""
 }
 
 // injectSpoofedHeaders configures HTTP/2 pseudo-headers and headers wire-order matching

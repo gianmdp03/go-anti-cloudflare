@@ -14,8 +14,10 @@ import (
 )
 
 const (
-	proxyURL   = "http://localhost:8079/proxy"
-	outputFile = "paradas_mgp.json"
+	proxyURL = "http://localhost:8079/proxy"
+	// Run this command from the Go repository; it atomically replaces the
+	// bundled catalogue consumed by the backend after a complete extraction.
+	outputFile = "../cuando-llega-pro-backend/src/main/resources/paradas_mgp.json"
 )
 
 var lineas = []struct {
@@ -58,6 +60,12 @@ type UpstreamResponse struct {
 	ParadasRaw    json.RawMessage `json:"paradas"`
 }
 
+type UpstreamRouteResponse struct {
+	CodigoEstado  int             `json:"CodigoEstado"`
+	MensajeEstado string          `json:"MensajeEstado"`
+	PuntosRaw     json.RawMessage `json:"puntos"`
+}
+
 type UpstreamParadaItem struct {
 	Codigo                     string `json:"Codigo"`
 	Identificador              string `json:"Identificador"`
@@ -66,6 +74,31 @@ type UpstreamParadaItem struct {
 	AbreviaturaAmpliadaBandera string `json:"AbreviaturaAmpliadaBandera"`
 	LatitudParada              string `json:"LatitudParada"`
 	LongitudParada             string `json:"LongitudParada"`
+}
+
+// UpstreamRoutePoint is deliberately separate from a stop: MGP publishes the
+// ordered road geometry in puntos, while its stops endpoint is not ordered.
+type UpstreamRoutePoint struct {
+	Latitud               FlexibleFloat `json:"Latitud"`
+	Longitud              FlexibleFloat `json:"Longitud"`
+	AbreviaturaBanderaSMP string        `json:"AbreviaturaBanderaSMP"`
+	Descripcion           string        `json:"Descripcion"`
+	IsPuntoPaso           bool          `json:"IsPuntoPaso"`
+}
+
+type FlexibleFloat float64
+
+func (f *FlexibleFloat) UnmarshalJSON(value []byte) error {
+	text := strings.Trim(string(value), "\" ")
+	if text == "" || text == "null" {
+		return nil
+	}
+	parsed, err := strconv.ParseFloat(text, 64)
+	if err != nil {
+		return err
+	}
+	*f = FlexibleFloat(parsed)
+	return nil
 }
 
 type ParadaLineaInfo struct {
@@ -85,6 +118,23 @@ type ParadaConsolidada struct {
 	Lineas        []ParadaLineaInfo `json:"lines"`
 }
 
+type PuntoRuta struct {
+	Latitud     float64 `json:"latitude"`
+	Longitud    float64 `json:"longitude"`
+	EsPuntoPaso bool    `json:"isPassThrough"`
+}
+
+// RutaConsolidada is the drawable source of truth. Stops remain physical
+// markers and are intentionally not used to construct the line geometry.
+type RutaConsolidada struct {
+	ID          string      `json:"id"`
+	CodigoLinea string      `json:"lineCode"`
+	NombreLinea string      `json:"lineName"`
+	Ramal       string      `json:"branch"`
+	Descripcion string      `json:"description"`
+	Puntos      []PuntoRuta `json:"points"`
+}
+
 type LineaMeta struct {
 	CodigoLinea string `json:"codigoLinea"`
 	Nombre      string `json:"nombre"`
@@ -98,11 +148,14 @@ type FinalOutput struct {
 	} `json:"metadata"`
 	Lineas  []LineaMeta         `json:"lineas"`
 	Paradas []ParadaConsolidada `json:"paradas"`
+	Rutas   []RutaConsolidada   `json:"routes"`
 }
 
 func main() {
 	client := &http.Client{Timeout: 55 * time.Second}
 	paradasMap := make(map[string]*ParadaConsolidada)
+	rutas := make([]RutaConsolidada, 0)
+	failedLines := make([]string, 0)
 
 	total := len(lineas)
 	fmt.Printf(">>> Iniciando scraping de %d lineas a traves de %s...\n", total, proxyURL)
@@ -113,6 +166,7 @@ func main() {
 		itemsOrdered, err := fetchParadasOrdered(client, l.Codigo)
 		if err != nil {
 			fmt.Printf("ERROR: %v\n", err)
+			failedLines = append(failedLines, l.Nombre+" (paradas)")
 		} else {
 			count := 0
 			banderaCounters := make(map[string]int)
@@ -168,8 +222,22 @@ func main() {
 			fmt.Printf("OK (%d paradas procesadas)\n", count)
 		}
 
+		rutasLinea, err := fetchRutas(client, l.Codigo, l.Nombre)
+		if err != nil {
+			fmt.Printf("    Recorridos: ERROR: %v\n", err)
+			failedLines = append(failedLines, l.Nombre+" (recorridos)")
+		} else {
+			rutas = append(rutas, rutasLinea...)
+			fmt.Printf("    Recorridos: OK (%d ramales)\n", len(rutasLinea))
+		}
+
 		jitter := time.Duration(2500+rand.Intn(2000)) * time.Millisecond
 		time.Sleep(jitter)
+	}
+
+	if len(failedLines) > 0 {
+		fmt.Printf("\n>>> Extracción incompleta; no se modificó %s. Fallaron: %s\n", outputFile, strings.Join(failedLines, ", "))
+		os.Exit(1)
 	}
 
 	paradasList := make([]ParadaConsolidada, 0, len(paradasMap))
@@ -179,6 +247,7 @@ func main() {
 
 	out := FinalOutput{
 		Paradas: paradasList,
+		Rutas:   rutas,
 	}
 	out.Metadata.FechaExtraccion = time.Now().Format(time.RFC3339)
 	out.Metadata.TotalLineas = total
@@ -271,4 +340,73 @@ func fetchParadasOrdered(client *http.Client, codLinea string) ([]UpstreamParada
 	}
 
 	return nil, lastErr
+}
+
+func fetchRutas(client *http.Client, codLinea, nombreLinea string) ([]RutaConsolidada, error) {
+	form := url.Values{}
+	form.Set("accion", "RecuperarRecorridoParaMapaAbrevYAmpliPorEntidadYLinea")
+	form.Set("codLinea", codLinea)
+	form.Set("isSublinea", "0")
+
+	req, err := http.NewRequest(http.MethodPost, proxyURL, strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Origin", "http://localhost:8400")
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	var upstream UpstreamRouteResponse
+	if err := json.Unmarshal(body, &upstream); err != nil {
+		return nil, fmt.Errorf("error parseando recorridos: %w", err)
+	}
+	var points []UpstreamRoutePoint
+	if err := json.Unmarshal(upstream.PuntosRaw, &points); err != nil {
+		return nil, fmt.Errorf("formato no reconocido de puntos: %w", err)
+	}
+
+	byBranch := make(map[string]*RutaConsolidada)
+	branchOrder := make([]string, 0)
+	for _, point := range points {
+		branch := point.AbreviaturaBanderaSMP
+		if branch == "" {
+			branch = "Principal"
+		}
+		route, exists := byBranch[branch]
+		if !exists {
+			route = &RutaConsolidada{
+				ID:          codLinea + ":" + branch,
+				CodigoLinea: codLinea,
+				NombreLinea: nombreLinea,
+				Ramal:       branch,
+				Descripcion: point.Descripcion,
+				Puntos:      make([]PuntoRuta, 0),
+			}
+			byBranch[branch] = route
+			branchOrder = append(branchOrder, branch)
+		}
+		route.Puntos = append(route.Puntos, PuntoRuta{
+			Latitud: float64(point.Latitud), Longitud: float64(point.Longitud), EsPuntoPaso: point.IsPuntoPaso,
+		})
+	}
+
+	routes := make([]RutaConsolidada, 0, len(branchOrder))
+	for _, branch := range branchOrder {
+		if len(byBranch[branch].Puntos) > 1 {
+			routes = append(routes, *byBranch[branch])
+		}
+	}
+	return routes, nil
 }
