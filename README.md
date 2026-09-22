@@ -29,7 +29,7 @@ Servicio sidecar de alto rendimiento en **Go 1.27.1** que opera como proxy inver
 |                                                             |
 |   +---------------------+         +---------------------+   |         +---------------------------+
 |   |   Spring Boot App   | ------> |  Go Sidecar Proxy   | --+-------> | Upstream MGP (Cloudflare) |
-|   |    (:8400)          |  HTTP   |     (:8080)         |   TLS/H2    | appsl.mardelplata.gob.ar  |
+|   |    (:8400)          |  HTTP   |     (:8079)         |   TLS/H2    | appsl.mardelplata.gob.ar  |
 |   +---------------------+         +---------------------+   | (JA4)   +---------------------------+
 |                                                             |
 +-------------------------------------------------------------+
@@ -79,7 +79,7 @@ docker compose up -d --build
 
 ### 3. Petición de Prueba desde Spring Boot / Host
 ```bash
-curl -i -X POST http://localhost:8080/proxy \
+curl -i -X POST http://localhost:8079/proxy \
   -H "Origin: http://localhost:8400" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -H "X-Request-ID: test-trace-001" \
@@ -88,7 +88,7 @@ curl -i -X POST http://localhost:8080/proxy \
 
 ### 4. Sonda de Salud
 ```bash
-curl -i http://localhost:8080/healthz
+curl -i http://localhost:8079/healthz
 ```
 
 ---

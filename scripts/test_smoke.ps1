@@ -1,7 +1,7 @@
 # PowerShell Smoke Test Script: Go TLS-Spoofing Sidecar Proxy
 param(
     [string]$ProxyHost = "localhost",
-    [int]$ProxyPort = 8080
+    [int]$ProxyPort = 8079
 )
 
 $ErrorActionPreference = "Stop"

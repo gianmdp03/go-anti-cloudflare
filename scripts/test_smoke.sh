@@ -5,7 +5,7 @@
 set -euo pipefail
 
 PROXY_HOST="${PROXY_HOST:-localhost}"
-PROXY_PORT="${PROXY_PORT:-8080}"
+PROXY_PORT="${PROXY_PORT:-8079}"
 BASE_URL="http://${PROXY_HOST}:${PROXY_PORT}"
 
 GREEN='\033[0;32m'

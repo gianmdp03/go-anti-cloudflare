@@ -9,7 +9,7 @@ services:
     container_name: mgp-proxy
     restart: unless-stopped
     environment:
-      - PORT=8080
+      - PORT=8079
       - UPSTREAM_URL=https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php
       - TIMEOUT_SECONDS=45
       - ALLOWED_ORIGIN=http://spring-boot:8400
@@ -18,7 +18,7 @@ services:
       - AUTH_SERVICE_URL=http://localhost:8191/v1
     ports:
       # Expose to host for local debugging or external queries if needed
-      - "8080:8080"
+      - "8079:8079"
     healthcheck:
       test: ["CMD", "/healthcheck"]
       interval: 10s
@@ -47,7 +47,7 @@ services:
     command: ["sh", "-c", "echo 'Spring Boot starting on :8400...' && nc -lk -p 8400"]
     environment:
       - SERVER_PORT=8400
-      - MGP_PROXY_URL=http://mgp-proxy:8080/proxy
+      - MGP_PROXY_URL=http://mgp-proxy:8079/proxy
     ports:
       - "8400:8400"
     depends_on:

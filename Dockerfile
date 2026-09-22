@@ -59,7 +59,7 @@ COPY --from=builder /build/healthcheck /healthcheck
 USER 10001:10001
 
 # Default environment configuration
-ENV PORT=8080 \
+ENV PORT=8079 \
     UPSTREAM_URL=https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php \
     TIMEOUT_SECONDS=45 \
     ALLOWED_ORIGIN=http://localhost:8400 \
@@ -67,7 +67,7 @@ ENV PORT=8080 \
     LOG_LEVEL=info \
     AUTH_SERVICE_URL=http://localhost:8191/v1
 
-EXPOSE 8080
+EXPOSE 8079
 
 # Native healthcheck using compiled Go probe (works in scratch without curl/sh)
 HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 CMD ["/healthcheck"]

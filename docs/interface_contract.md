@@ -1,6 +1,6 @@
 # Contrato de Interfaz: Go TLS-Spoofing Sidecar Proxy & Spring Boot
 
-Este documento especifica el contrato de comunicación de red, cabeceras, payloads y ejemplos de integración entre el backend **Spring Boot** (que opera en el puerto `8400`) y el **Go TLS-Spoofing Sidecar Proxy** (que opera en el puerto `8080`).
+Este documento especifica el contrato de comunicación de red, cabeceras, payloads y ejemplos de integración entre el backend **Spring Boot** (que opera en el puerto `8400`) y el **Go TLS-Spoofing Sidecar Proxy** (que opera en el puerto `8079`).
 
 ---
 
@@ -12,7 +12,7 @@ Este documento especifica el contrato de comunicación de red, cabeceras, payloa
 |                                                             |
 |   +---------------------+         +---------------------+   |         +---------------------------+
 |   |   Spring Boot App   | ------> |  Go Sidecar Proxy   | --+-------> | Upstream MGP (Cloudflare) |
-|   |    (:8400)          |  HTTP   |     (:8080)         |   TLS/H2    | appsl.mardelplata.gob.ar  |
+|   |    (:8400)          |  HTTP   |     (:8079)         |   TLS/H2    | appsl.mardelplata.gob.ar  |
 |   +---------------------+         +---------------------+   | (JA4)   +---------------------------+
 |                                                             |
 +-------------------------------------------------------------+
@@ -25,7 +25,7 @@ Este documento especifica el contrato de comunicación de red, cabeceras, payloa
 ### A. Endpoint Proxy (`/proxy`)
 Forwardea la petición al upstream municipal eludiendo el control TLS/JA4 de Cloudflare.
 
-- **URL:** `http://localhost:8080/proxy` (o `http://mgp-proxy:8080/proxy` en Docker)
+- **URL:** `http://localhost:8079/proxy` (o `http://mgp-proxy:8079/proxy` en Docker)
 - **Métodos permitidos:** `POST`, `GET`, `OPTIONS`
 - **Content-Type requerido:** `application/x-www-form-urlencoded` (o `application/json`)
 - **Cabeceras soportadas:**
@@ -35,7 +35,7 @@ Forwardea la petición al upstream municipal eludiendo el control TLS/JA4 de Clo
 
 #### Petición Curl Exacta desde Spring Boot / Host
 ```bash
-curl -i -X POST http://localhost:8080/proxy \
+curl -i -X POST http://localhost:8079/proxy \
   -H "Origin: http://localhost:8400" \
   -H "Content-Type: application/x-www-form-urlencoded; charset=UTF-8" \
   -H "X-Request-ID: 7f8a9b0c-1234-5678-9abc-def012345678" \
@@ -61,12 +61,12 @@ Transfer-Encoding: chunked
 ### B. Endpoint de Salud (`/healthz`)
 Permite a Kubernetes, Docker Swarm, Docker Compose o Spring Boot verificar la disponibilidad y estado del sidecar.
 
-- **URL:** `http://localhost:8080/healthz`
+- **URL:** `http://localhost:8079/healthz`
 - **Método:** `GET`
 
 #### Petición Curl
 ```bash
-curl -i http://localhost:8080/healthz
+curl -i http://localhost:8079/healthz
 ```
 
 #### Respuesta
@@ -106,9 +106,9 @@ public class MgpTransitClient {
     private final WebClient webClient;
 
     public MgpTransitClient(WebClient.Builder builder) {
-        // En Docker Compose apuntar a "http://mgp-proxy:8080"
+        // En Docker Compose apuntar a "http://mgp-proxy:8079"
         this.webClient = builder
-                .baseUrl("http://localhost:8080")
+                .baseUrl("http://localhost:8079")
                 .defaultHeader("Origin", "http://localhost:8400")
                 .build();
     }
@@ -144,7 +144,7 @@ public class MgpTransitRestClient {
 
     public MgpTransitRestClient(RestClient.Builder builder) {
         this.restClient = builder
-                .baseUrl("http://localhost:8080")
+                .baseUrl("http://localhost:8079")
                 .defaultHeader("Origin", "http://localhost:8400")
                 .build();
     }

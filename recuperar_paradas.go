@@ -18,7 +18,6 @@ const (
 	outputFile = "paradas_mgp.json"
 )
 
-// Catálogo de líneas provisto
 var lineas = []struct {
 	Nombre string
 	Codigo string
@@ -53,11 +52,10 @@ var lineas = []struct {
 	{"BATAN", "344"},
 }
 
-// Modelos para leer la respuesta cruda del upstream
 type UpstreamResponse struct {
-	CodigoEstado  int                             `json:"CodigoEstado"`
-	MensajeEstado string                          `json:"MensajeEstado"`
-	Paradas       map[string][]UpstreamParadaItem `json:"paradas"`
+	CodigoEstado  int             `json:"CodigoEstado"`
+	MensajeEstado string          `json:"MensajeEstado"`
+	ParadasRaw    json.RawMessage `json:"paradas"`
 }
 
 type UpstreamParadaItem struct {
@@ -70,21 +68,26 @@ type UpstreamParadaItem struct {
 	LongitudParada             string `json:"LongitudParada"`
 }
 
-// Modelos para el JSON consolidado final
 type ParadaLineaInfo struct {
-	CodigoLinea     string `json:"codigoLinea"`
-	NombreLinea     string `json:"nombreLinea"`
-	Bandera         string `json:"bandera"`
-	BanderaAmpliada string `json:"banderaAmpliada"`
+	CodigoLinea     string `json:"lineCode"`
+	NombreLinea     string `json:"lineName"`
+	Bandera         string `json:"direction"`
+	BanderaAmpliada string `json:"expandedDirection"`
+	StopOrder       int    `json:"stopOrder"`
 }
 
 type ParadaConsolidada struct {
-	Identificador string            `json:"identificador"`
-	Codigo        string            `json:"codigo"`
-	Descripcion   string            `json:"descripcion"`
-	Latitud       float64           `json:"latitud"`
-	Longitud      float64           `json:"longitud"`
-	Lineas        []ParadaLineaInfo `json:"lineas"`
+	Identificador string            `json:"identifier"`
+	Codigo        string            `json:"code"`
+	Descripcion   string            `json:"description"`
+	Latitud       float64           `json:"latitude"`
+	Longitud      float64           `json:"longitude"`
+	Lineas        []ParadaLineaInfo `json:"lines"`
+}
+
+type LineaMeta struct {
+	CodigoLinea string `json:"codigoLinea"`
+	Nombre      string `json:"nombre"`
 }
 
 type FinalOutput struct {
@@ -93,10 +96,7 @@ type FinalOutput struct {
 		TotalLineas        int    `json:"totalLineas"`
 		TotalParadasUnicas int    `json:"totalParadasUnicas"`
 	} `json:"metadata"`
-	Lineas []struct {
-		CodigoLinea string `json:"codigoLinea"`
-		Nombre      string `json:"nombre"`
-	} `json:"lineas"`
+	Lineas  []LineaMeta         `json:"lineas"`
 	Paradas []ParadaConsolidada `json:"paradas"`
 }
 
@@ -110,59 +110,68 @@ func main() {
 	for i, l := range lineas {
 		fmt.Printf("[%d/%d] Consultando Linea %s (Cod: %s)... ", i+1, total, l.Nombre, l.Codigo)
 
-		items, err := fetchParadas(client, l.Codigo)
+		itemsOrdered, err := fetchParadasOrdered(client, l.Codigo)
 		if err != nil {
 			fmt.Printf("ERROR: %v\n", err)
 		} else {
 			count := 0
-			for idParada, variantes := range items {
-				for _, item := range variantes {
-					lat, _ := strconv.ParseFloat(item.LatitudParada, 64)
-					lng, _ := strconv.ParseFloat(item.LongitudParada, 64)
+			banderaCounters := make(map[string]int)
 
-					// 1. Dar de alta la parada física si no existe en el mapa
-					p, exists := paradasMap[idParada]
-					if !exists {
-						p = &ParadaConsolidada{
-							Identificador: idParada,
-							Codigo:        item.Codigo,
-							Descripcion:   item.Descripcion,
-							Latitud:       lat,
-							Longitud:      lng,
-							Lineas:        make([]ParadaLineaInfo, 0),
-						}
-						paradasMap[idParada] = p
-					}
-
-					// 2. Asociar la línea y bandera evitando duplicados
-					yaExiste := false
-					for _, lin := range p.Lineas {
-						if lin.CodigoLinea == l.Codigo && lin.Bandera == item.AbreviaturaBandera {
-							yaExiste = true
-							break
-						}
-					}
-
-					if !yaExiste {
-						p.Lineas = append(p.Lineas, ParadaLineaInfo{
-							CodigoLinea:     l.Codigo,
-							NombreLinea:     l.Nombre,
-							Bandera:         item.AbreviaturaBandera,
-							BanderaAmpliada: item.AbreviaturaAmpliadaBandera,
-						})
-					}
-					count++
+			for _, item := range itemsOrdered {
+				idParada := item.Identificador
+				if idParada == "" {
+					idParada = item.Codigo
 				}
+				if idParada == "" {
+					continue
+				}
+
+				lat, _ := strconv.ParseFloat(item.LatitudParada, 64)
+				lng, _ := strconv.ParseFloat(item.LongitudParada, 64)
+
+				p, exists := paradasMap[idParada]
+				if !exists {
+					p = &ParadaConsolidada{
+						Identificador: idParada,
+						Codigo:        item.Codigo,
+						Descripcion:   item.Descripcion,
+						Latitud:       lat,
+						Longitud:      lng,
+						Lineas:        make([]ParadaLineaInfo, 0),
+					}
+					paradasMap[idParada] = p
+				}
+
+				orderIndex := banderaCounters[item.AbreviaturaBandera]
+				banderaCounters[item.AbreviaturaBandera] = orderIndex + 1
+
+				yaExiste := false
+				for idx, lin := range p.Lineas {
+					if lin.CodigoLinea == l.Codigo && lin.Bandera == item.AbreviaturaBandera {
+						p.Lineas[idx].StopOrder = orderIndex
+						yaExiste = true
+						break
+					}
+				}
+
+				if !yaExiste {
+					p.Lineas = append(p.Lineas, ParadaLineaInfo{
+						CodigoLinea:     l.Codigo,
+						NombreLinea:     l.Nombre,
+						Bandera:         item.AbreviaturaBandera,
+						BanderaAmpliada: item.AbreviaturaAmpliadaBandera,
+						StopOrder:       orderIndex,
+					})
+				}
+				count++
 			}
 			fmt.Printf("OK (%d paradas procesadas)\n", count)
 		}
 
-		// Timer generoso aleatorio entre 2.5 y 4.5 segundos para cuidar la IP
 		jitter := time.Duration(2500+rand.Intn(2000)) * time.Millisecond
 		time.Sleep(jitter)
 	}
 
-	// Consolidar array final
 	paradasList := make([]ParadaConsolidada, 0, len(paradasMap))
 	for _, v := range paradasMap {
 		paradasList = append(paradasList, *v)
@@ -176,16 +185,12 @@ func main() {
 	out.Metadata.TotalParadasUnicas = len(paradasList)
 
 	for _, l := range lineas {
-		out.Lineas = append(out.Lineas, struct {
-			CodigoLinea string `json:"codigoLinea"`
-			Nombre      string `json:"nombre"`
-		}{
+		out.Lineas = append(out.Lineas, LineaMeta{
 			CodigoLinea: l.Codigo,
 			Nombre:      l.Nombre,
 		})
 	}
 
-	// Guardar a disco
 	jsonData, err := json.MarshalIndent(out, "", "  ")
 	if err != nil {
 		fmt.Printf("Error serializando JSON: %v\n", err)
@@ -202,7 +207,7 @@ func main() {
 	fmt.Printf(">>> Total de paradas fisicas unificadas: %d\n", len(paradasList))
 }
 
-func fetchParadas(client *http.Client, codLinea string) (map[string][]UpstreamParadaItem, error) {
+func fetchParadasOrdered(client *http.Client, codLinea string) ([]UpstreamParadaItem, error) {
 	var lastErr error
 
 	for intento := 1; intento <= 3; intento++ {
@@ -243,20 +248,27 @@ func fetchParadas(client *http.Client, codLinea string) (map[string][]UpstreamPa
 
 		var upResp UpstreamResponse
 		if err := json.Unmarshal(bodyBytes, &upResp); err != nil {
-			lastErr = fmt.Errorf("error parseando JSON: %w (muestra: %s)", err, truncate(string(bodyBytes), 100))
+			lastErr = fmt.Errorf("error parseando JSON: %w", err)
 			time.Sleep(4 * time.Second)
 			continue
 		}
 
-		return upResp.Paradas, nil
+		var items []UpstreamParadaItem
+
+		if err := json.Unmarshal(upResp.ParadasRaw, &items); err == nil {
+			return items, nil
+		}
+
+		var mapItems map[string][]UpstreamParadaItem
+		if err := json.Unmarshal(upResp.ParadasRaw, &mapItems); err == nil {
+			for _, list := range mapItems {
+				items = append(items, list...)
+			}
+			return items, nil
+		}
+
+		return nil, fmt.Errorf("formato no reconocido de paradas")
 	}
 
 	return nil, lastErr
-}
-
-func truncate(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "..."
 }

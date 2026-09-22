@@ -10,7 +10,7 @@ import (
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8079"
 	}
 
 	url := fmt.Sprintf("http://127.0.0.1:%s/healthz", port)

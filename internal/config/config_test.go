@@ -17,11 +17,11 @@ func TestLoadDefaults(t *testing.T) {
 		t.Fatalf("expected no error for defaults, got: %v", err)
 	}
 
-	if cfg.Port() != 8080 {
-		t.Errorf("expected default port 8080, got %d", cfg.Port())
+	if cfg.Port() != 8079 {
+		t.Errorf("expected default port 8079, got %d", cfg.Port())
 	}
-	if cfg.ListenAddr() != ":8080" {
-		t.Errorf("expected ListenAddr ':8080', got '%s'", cfg.ListenAddr())
+	if cfg.ListenAddr() != ":8079" {
+		t.Errorf("expected ListenAddr ':8079', got '%s'", cfg.ListenAddr())
 	}
 	if cfg.UpstreamURLString() != "https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php" {
 		t.Errorf("expected default upstream URL, got '%s'", cfg.UpstreamURLString())

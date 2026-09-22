@@ -18,7 +18,7 @@ go run cmd/server/main.go
 
 Con variables de entorno personalizadas:
 ```bash
-PORT=8080 \
+PORT=8079 \
 ALLOWED_ORIGIN=http://localhost:8400 \
 TLS_PROFILE=Chrome_131 \
 LOG_LEVEL=debug \
@@ -27,7 +27,7 @@ go run cmd/server/main.go
 
 En Windows (PowerShell):
 ```powershell
-$env:PORT="8080"
+$env:PORT="8079"
 $env:ALLOWED_ORIGIN="http://localhost:8400"
 $env:TLS_PROFILE="Chrome_131"
 go run cmd/server/main.go
@@ -43,7 +43,7 @@ docker build -t mgp-proxy:latest .
 # Ejecutar con límite de memoria de 32 MB
 docker run -d \
   --name mgp-proxy \
-  -p 8080:8080 \
+  -p 8079:8079 \
   -m 32m \
   --cpus 0.25 \
   -e ALLOWED_ORIGIN="http://localhost:8400" \
@@ -99,7 +99,7 @@ sudo journalctl -u mgp-proxy -f -o json-pretty
 
 | Variable | Tipo | Default | Descripción |
 |---|---|---|---|
-| `PORT` | int | `8080` | Puerto TCP de escucha del servidor HTTP. |
+| `PORT` | int | `8079` | Puerto TCP de escucha del servidor HTTP. |
 | `UPSTREAM_URL` | string | `https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php` | URL del endpoint de transporte de General Pueyrredon. |
 | `TIMEOUT_SECONDS` | int | `45` | Timeout máximo para peticiones salientes al upstream. |
 | `ALLOWED_ORIGIN` | string | `http://localhost:8400` | Origen CORS autorizado (backend Spring Boot). |

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	defaultPort           = 8080
+	defaultPort           = 8079
 	defaultUpstreamURL    = "https://appsl.mardelplata.gob.ar/app_cuando_llega/webWS.php"
 	defaultTimeoutSeconds = 45
 	defaultAllowedOrigin  = "http://localhost:8400"
